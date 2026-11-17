@@ -120,7 +120,7 @@ static const CfgMeta metas[] = {
     {"VOLUME", "100", "0..100", LIVE}, {"AUDIO_CHANNELS", "auto", "auto|2|6", RESTART}, {"BACKGROUND_MUTE", "0", "0|1", LIVE},
     {"MOTION", "1", "0|1", LIVE}, {"RUMBLE_STRENGTH", "130", "0..300", LIVE}, {"RUMBLE_CURVE", "0.6", "0.2..1.5", LIVE},
     {"RUMBLE_TRIGGERS", "0", "0|1", LIVE}, {"PAD_LAYOUT", "auto", "auto|nintendo|xbox", LIVE},
-    {"BUTTON_ICONS", "auto", "auto|nintendo|xbox|playstation|keyboard", LIVE},
+    {"BUTTON_ICONS", "auto", "auto|nintendo|xbox|steamdeck|playstation|keyboard", LIVE},
     {"MOUSE_SENS", "1", "0..10", LIVE}, {"STICK_DEADZONE", "8", "0..40", LIVE}, {"SWITCH2", "0", "0|1|2", RESTART},
     // Cemuhook / DSU motion (input/dsu.c, #435): a server's gyro for a gamepad without one; off unless asked for. The
     // server's address (26760 is the port every DSU server uses) and its slot for player 1 have no menu row
@@ -299,8 +299,15 @@ int cfg_reload_key(const char *name) {
 // passes of that size taking 16 of the GPU's 42 ms a frame (MKW_PASS_TIMING with MKW_VK_RECORDER=0). With 720 they
 // go: race median 36.3 -> 23.4 ms (time trial, low quality preset, UMA 1 GB, 13/11/2026), 35.7 -> 24.6 ms without the
 // timing; a docked Deck on a large screen can pick a higher one in the menu.
+// The Deck's profile also holds the GPU at the peak pstate and the replay thread alone on a core (18/11/2026, Deck
+// OLED, 1.8.0): amdgpu left the half-busy GPU at 200-1040 MHz and a 900p/30 Grand Prix took 39.4 ms; held at the peak
+// 33.8 ms, 2P -4.7 ms (in-run A/B and its inverted twin), on battery -3.0 ms; the replay core -1.2 ms. At the default
+// 15 W cap the SoC drew 15-18 W; with the standard pstate 9-12 W, which still held 30 fps at 720p. MKW_GPU_CLOCKS=off
+// or standard and MKW_REPLAY_CORE=0 still override both, as does the player's TDP limit. This is the Deck's profile,
+// not an APU default: the 660M (Rembrandt) keeps amdgpu's clocks.
 static const struct { const char *key, *value; } DECK[] = {
     {"FULLSCREEN", "1"}, {"WINDOW_SIZE", "1280x800"}, {"VK_PRESENT", "fifo"}, {"RESOLUTION", "720"},
+    {"GPU_CLOCKS", "peak"}, {"REPLAY_CORE", "1"},
 };
 static int profile = -1;   // 0 none, 1 Steam Deck
 
@@ -314,13 +321,21 @@ static int read_line(const char *path, char *out, size_t n) {
 }
 
 // The Steam Deck: Valve's board, product Jupiter or Galileo (/sys/class/dmi/id); SteamDeck=1, which Steam sets on it.
-static int on_steam_deck(void) {
+int cfg_on_steam_deck(void) {
+    static int deck = -1;
+    int d = __atomic_load_n(&deck, __ATOMIC_ACQUIRE);
+    if (d >= 0) return d;
     const char *env = getenv("SteamDeck");
-    if (env && !strcmp(env, "1")) return 1;
-    char vendor[64], product[64];
-    return read_line("/sys/class/dmi/id/board_vendor", vendor, sizeof vendor) && !strcmp(vendor, "Valve") &&
-           read_line("/sys/class/dmi/id/product_name", product, sizeof product) &&
-           (!strcmp(product, "Jupiter") || !strcmp(product, "Galileo"));
+    if (env && !strcmp(env, "1")) {
+        d = 1;
+    } else {
+        char vendor[64], product[64];
+        d = read_line("/sys/class/dmi/id/board_vendor", vendor, sizeof vendor) && !strcmp(vendor, "Valve") &&
+            read_line("/sys/class/dmi/id/product_name", product, sizeof product) &&
+            (!strcmp(product, "Jupiter") || !strcmp(product, "Galileo"));
+    }
+    __atomic_store_n(&deck, d, __ATOMIC_RELEASE);
+    return d;
 }
 
 static const char *raw_get(const char *name);
@@ -331,7 +346,7 @@ static int profile_of(void) {
     const char *set = raw_get(PREFIX "DEVICE_PROFILE");
     if (set && !strcmp(set, "deck")) p = 1;
     else if (set && *set && strcmp(set, "auto")) p = 0;
-    else p = on_steam_deck();
+    else p = cfg_on_steam_deck();
     __atomic_store_n(&profile, p, __ATOMIC_RELEASE);
     return p;
 }

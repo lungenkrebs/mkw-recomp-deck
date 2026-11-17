@@ -2770,3 +2770,7 @@ msgstr ""
 msgctxt "UI_LAUNCH_FOUND_FOLDER"
 msgid "folder"
 msgstr ""
+
+msgctxt "UI_MENU_ICONS_STEAM_DECK"
+msgid "Steam Deck"
+msgstr "Steam Deck"
