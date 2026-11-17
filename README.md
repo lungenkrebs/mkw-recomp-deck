@@ -2,6 +2,10 @@
 
 <h1 align="center">mkw-recomp</h1>
 
+> **This fork ([lungenkrebs/mkw-recomp-deck](https://github.com/lungenkrebs/mkw-recomp-deck)):** native
+> Steam Deck button prompts and a Deck profile with the GPU peak pstate and the replay core. See
+> [README-deck.md](README-deck.md) for the additions and [SYNC.md](SYNC.md) for updating from upstream.
+
 <p align="center">
   <b>Mario Kart World (Nintendo Switch 2) recompiled to run natively on Linux and Windows.</b>
 </p>
