@@ -305,9 +305,14 @@ int cfg_reload_key(const char *name) {
 // 15 W cap the SoC drew 15-18 W; with the standard pstate 9-12 W, which still held 30 fps at 720p. MKW_GPU_CLOCKS=off
 // or standard and MKW_REPLAY_CORE=0 still override both, as does the player's TDP limit. This is the Deck's profile,
 // not an APU default: the 660M (Rembrandt) keeps amdgpu's clocks.
+// The native task/mesh path (18/11/2026): RADV runs the game's task/mesh draws as compute passes (vk_mesh_cs.c),
+// and that emulation misrenders the drift decal of upstream #543 as huge stretched quads across the track. The
+// native path ran three races on this Deck without a device loss and leaves only that one decal wrong (the ground
+// trail, drawn by mesh program 3560a697). MKW_MESH_COMPUTE=1 returns to the emulation, e.g. if a Mesa update makes
+// the native path lose the device again.
 static const struct { const char *key, *value; } DECK[] = {
     {"FULLSCREEN", "1"}, {"WINDOW_SIZE", "1280x800"}, {"VK_PRESENT", "fifo"}, {"RESOLUTION", "720"},
-    {"GPU_CLOCKS", "peak"}, {"REPLAY_CORE", "1"},
+    {"GPU_CLOCKS", "peak"}, {"REPLAY_CORE", "1"}, {"MESH_COMPUTE", "0"},
 };
 static int profile = -1;   // 0 none, 1 Steam Deck
 

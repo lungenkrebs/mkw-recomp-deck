@@ -15,7 +15,12 @@ assets come from the player's own dump.
   - `GPU_CLOCKS = peak`: amdgpu left the half-busy GPU at 200–1040 MHz; the race at 900p/30 went
     **39.4 → 33.8 ms**, 2P **−4.7 ms** (in-run A/B and its inverted twin), on battery −3.0 ms.
   - `REPLAY_CORE = 1`: the replay thread alone on one physical core, −1.2 ms.
-  Both can be overridden with `MKW_GPU_CLOCKS=off|standard` and `MKW_REPLAY_CORE=0`.
+  - `MESH_COMPUTE = 0`: native task/mesh shaders instead of the compute emulation RADV takes by default.
+    The emulation draws the drift decal of
+    [#543](https://github.com/adriadam10/mkw-recomp/issues/543) as huge stretched quads across the track;
+    the native path ran three races on a Deck OLED without a device loss and leaves only that one decal
+    wrong. `MKW_MESH_COMPUTE=1` returns to the emulation if a Mesa update breaks the native path.
+  All can be overridden with `MKW_GPU_CLOCKS=off|standard`, `MKW_REPLAY_CORE=0` and `MKW_MESH_COMPUTE=1`.
 - **TDP guidance**: peak draws 15–18 W at the default cap; the `standard` pstate draws 9–12 W and held
   30 fps at 720p (12 W cap: 33.5 ms median, occasional slow-motion at the race start). For 2P or 900p,
   peak is the better choice.
